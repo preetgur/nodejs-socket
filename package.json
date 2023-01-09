@@ -1,0 +1,16 @@
+{
+  "name": "secrypt_chat",
+  "version": "1.0.0",
+  "description": "chat functionality using web sockets",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "nodemon": "^2.0.20",
+    "ws": "^8.12.0"
+  }
+}
