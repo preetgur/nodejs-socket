@@ -1,63 +1,81 @@
+const express = require("express");
+const app = express();
 const http = require("http");
+const { Server } = require("socket.io");
+const cors = require("cors");
 
-const WebSocket = require("ws");
+app.use(cors());
 
-// Set up the WebSocket server
-const wss = new WebSocket.Server({ port: 8085 });
+const server = http.createServer(app);
 
-// Set up an object to store the clients, keyed by client ID
-const clients = {};
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"],
+  },
+});
 
-wss.on("connection", (ws) => {
-  // Assign a unique ID to each client
-  const clientId = Date.now();
-  clients[clientId] = ws;
+// io.on("connection", (socket) => {
+//   console.log(`User Connected: ${socket.id}`);
 
-  // Send the client ID back to the client
-  ws.send(JSON.stringify({ clientId }));
+//   socket.on("join_room", (data) => {
+//     console.log("### room joied ####",data)
+//     socket.join(data);
+//   });
 
-  ws.on("message", (message) => {
-    console.log(`Received message from client ${clientId} => ${message}`);
+//   socket.on("send_message", (data) => {
+//     socket.to(data.room).emit("receive_message", data);
+//   });
+// });
 
-    // Parse the message to extract the sender and recipient IDs
-    const { sender, recipient, text } = JSON.parse(message);
 
-    // Forward the message to the recipient, if they are connected
-    const recipientConnection = clients[recipient];
-    console.log("##### recepetent connection #####", recipientConnection);
-    if (
-      recipientConnection &&
-      recipientConnection.readyState === WebSocket.OPEN
-    ) {
-      recipientConnection.send(JSON.stringify({ sender, text }));
+
+// 
+
+let clients = {};
+let messageQueue = [];
+
+io.on('connection', socket => {
+  socket.on('login', username => {
+
+    console.log("#### user login ####",username,socket.id)
+    clients[username] = socket;
+    deliverPendingMessages(username);
+    console.log("###### client #######",clients.conn)
+  console.log("message queue ###",messageQueue)
+
+  });
+
+
+  socket.on('send message', (recipient, message) => {
+    console.log("####### send message #####",recipient,message)
+    const recipientSocket = clients[recipient];
+    // console.log("####### recipient socket ######",recipientSocket)
+    if (recipientSocket) {
+        console.log("### inside if ###",recipientSocket.emit())
+      recipientSocket.emit('receive_message', message);
+    } else {
+      console.log(`User ${recipient} is not online. Adding message to queue.`);
+      messageQueue.push({
+        recipient: recipient,
+        message: message
+      });
+
+      console.log("######## messge queure ######",messageQueue)
     }
   });
+});
 
-  ws.on("close", () => {
-    console.log(`Client ${clientId} disconnected`);
-    // delete clients[clientId];
+function deliverPendingMessages(username) {
+  const pendingMessages = messageQueue.filter(m => m.recipient === username);
+  pendingMessages.forEach(m => {
+    clients[username].emit('receive_message', m.message);
+    
   });
-});
+  messageQueue = messageQueue.filter(m => m.recipient !== username);
+}
 
-const server = http.createServer((req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  console.log("### header #####", req.headers);
-
-  if (req.method === "GET" && req.url === "/login") {
-    console.log("### header #####", req.headers);
-    res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({ message: "This is login page" }));
-  }
-  if (req.method === "POST" && req.url === "/login") {
-    console.log("this is post login");
-    res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({ message: "This is login page" }));
-  }
-});
-
-server.listen(8080, () => {
-  console.log("server is listening on port 8080");
+server.listen(3001, () => {
+  console.log("SERVER IS RUNNING");
 });
