@@ -62,11 +62,16 @@ io.on("connection", (socket) => {
     }
   });
 
-  
+  socket.on("userTyping", (room, username) => {
+    socket.broadcast.to(room).emit("userTyping", username);
+  });
+
+  socket.on("userTypingEnd", (room) => {
+    socket.broadcast.to(room).emit("userTypingEndResp");
+  });
 
   // handle messages
   socket.on("sendMessage", (room, message) => {
-
     io.to(room).emit("newMessage", {
       from: clients[socket.id],
       message,
